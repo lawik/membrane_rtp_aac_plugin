@@ -4,6 +4,7 @@ defmodule Membrane.RTP.AAC.Depayloader do
   """
 
   use Membrane.Filter
+  require Membrane.Logger
   alias Membrane.{AAC, Buffer, RTP}
   alias Membrane.RTP.AAC.Utils
 
@@ -37,7 +38,11 @@ defmodule Membrane.RTP.AAC.Depayloader do
       buffers = Enum.map(payloads, &%Buffer{buffer | payload: &1})
       {[buffer: {:output, buffers}], state}
     else
-      {:error, reason} -> raise "Cannot parse packet due to: #{inspect(reason)}"
+      # The payload comes from a remote peer, so a malformed packet is dropped
+      # instead of crashing the element (and the pipeline with it).
+      {:error, reason} ->
+        Membrane.Logger.warning("Dropping malformed RTP packet: #{inspect(reason)}")
+        {[], state}
     end
   end
 end

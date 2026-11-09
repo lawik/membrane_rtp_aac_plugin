@@ -60,9 +60,18 @@ defmodule Membrane.RTP.AAC.Utils do
   """
   @spec parse_packet(binary(), any()) :: {:ok, [binary()]} | {:error, any()}
   def parse_packet(packet, mode) do
-    <<headers_length::16, header_section::bits-size(headers_length), au_data_section::binary>> =
-      packet
+    case packet do
+      <<headers_length::16, header_section::bits-size(headers_length), au_data_section::binary>> ->
+        parse_sections(header_section, au_data_section, mode)
 
+      # payload shorter than 2 bytes, AU-headers-length pointing past the end of the
+      # payload or AU header section that is not octet aligned
+      _malformed ->
+        {:error, {"Malformed packet:", packet}}
+    end
+  end
+
+  defp parse_sections(header_section, au_data_section, mode) do
     {au_size_length, au_index_length} = bitrate_params(mode)
 
     headers =

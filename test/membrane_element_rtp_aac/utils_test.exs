@@ -53,5 +53,17 @@ defmodule Membrane.RTP.AAC.Utils.Test do
       assert {:ok, aus} ==
                Utils.parse_packet(packet, :hbr)
     end
+
+    test "returns an error instead of raising on a malformed packet" do
+      # shorter than the AU-headers-length field
+      assert {:error, _reason} = Utils.parse_packet(<<>>, :lbr)
+      assert {:error, _reason} = Utils.parse_packet(<<0>>, :lbr)
+      # AU-headers-length pointing past the end of the payload
+      assert {:error, _reason} = Utils.parse_packet(<<1000::16, 1::6, 0::2, 1>>, :lbr)
+      # AU header section that is not octet aligned
+      assert {:error, _reason} = Utils.parse_packet(<<12::16, 1::6, 0::2, 1>>, :lbr)
+      # AU sizes not matching the data section
+      assert {:error, _reason} = Utils.parse_packet(<<8::16, 5::6, 0::2, 1>>, :lbr)
+    end
   end
 end
